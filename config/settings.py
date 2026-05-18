@@ -1,6 +1,7 @@
 """
 Django settings for Barbershop Bot project.
 """
+import os
 from decouple import config
 from pathlib import Path
 
@@ -52,10 +53,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+# Docker volumeda /app/db/db.sqlite3 ishlatiladi, localda BASE_DIR/db.sqlite3
+_db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'db.sqlite3'))
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': _db_path,
     }
 }
 

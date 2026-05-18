@@ -5,3 +5,8 @@ db.sqlite3
 *.log
 venv/
 .venv/
+
+# Docker
+# IDE
+.vscode/
+.idea/

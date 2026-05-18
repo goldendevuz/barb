@@ -1,0 +1,32 @@
+services:
+
+  # ── Django Admin Panel ─────────────────────────────────────────────────────
+  web:
+    build: .
+    container_name: barb_web
+    entrypoint: /entrypoint.sh web
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - sqlite_data:/app/db
+    restart: unless-stopped
+    depends_on: []
+
+  # ── Telegram Bot ───────────────────────────────────────────────────────────
+  bot:
+    build: .
+    container_name: barb_bot
+    entrypoint: /entrypoint.sh bot
+    env_file:
+      - .env
+    volumes:
+      - sqlite_data:/app/db
+    restart: unless-stopped
+    depends_on:
+      - web
+
+# ── Shared SQLite volume ───────────────────────────────────────────────────────
+volumes:
+  sqlite_data:
