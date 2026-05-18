@@ -13,7 +13,8 @@ const Login = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/login/', {
+      const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/';
+      const response = await axios.post(`${BASE_URL}login/`, {
         username: values.username,
         password: values.password,
       });
