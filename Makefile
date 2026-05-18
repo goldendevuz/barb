@@ -22,6 +22,9 @@ help:
 	@echo ""
 	@echo "--- Aiogram Bot (Local) ---"
 	@echo "  make run-bot          - Telegram botni ishga tushirish"
+	@echo ""
+	@echo "--- React Frontend ---"
+	@echo "  make run-front        - React frontend ni ishga tushirish (Vite)"
 
 # --- Docker ---
 d-up:
@@ -55,3 +58,7 @@ shell:
 # --- Bot ---
 run-bot:
 	$(PYTHON) barber/bot.py
+
+# --- Frontend ---
+run-front:
+	cd frontend && npm run dev
