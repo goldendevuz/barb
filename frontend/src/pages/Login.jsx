@@ -14,11 +14,11 @@ const Login = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${BASE_URL}login/`, {
+      const response = await axios.post(`${BASE_URL}/login/`, {
         username: values.username,
         password: values.password,
       });
-      
+
       login(response.data.access, response.data.refresh);
       message.success('Tizimga muvaffaqiyatli kirdingiz!');
       navigate('/');
