@@ -9,6 +9,9 @@ if [ "$SERVICE" = "web" ]; then
     echo "📦 Applying migrations..."
     python manage.py migrate --noinput
 
+    echo "🎨 Collecting static files..."
+    python manage.py collectstatic --noinput
+
     echo "👤 Creating superuser (admin/admin) if not exists..."
     python -c "
 from django.contrib.auth import get_user_model

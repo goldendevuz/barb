@@ -8,3 +8,5 @@ aiosqlite==0.20.0
 djangorestframework==3.15.1
 django-cors-headers==4.3.1
 djangorestframework-simplejwt==5.3.1
+whitenoise==6.6.0
+django-daisy==2.0.8
