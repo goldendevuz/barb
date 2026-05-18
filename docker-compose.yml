@@ -27,6 +27,16 @@ services:
     depends_on:
       - web
 
+  # ── React Frontend ─────────────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: barb_frontend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    depends_on:
+      - web
+
 # ── Shared SQLite volume ───────────────────────────────────────────────────────
 volumes:
   sqlite_data:
