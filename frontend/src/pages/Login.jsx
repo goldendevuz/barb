@@ -4,6 +4,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useStore';
 import axios from 'axios';
+import { BASE_URL } from '../services/api';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
@@ -13,7 +14,6 @@ const Login = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const BASE_URL = import.meta.env.VITE_API_BASE_URL;
       const response = await axios.post(`${BASE_URL}login/`, {
         username: values.username,
         password: values.password,
