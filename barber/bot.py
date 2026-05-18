@@ -25,8 +25,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     Message, CallbackQuery,
     InlineKeyboardMarkup, InlineKeyboardButton,
-    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
-    ContactContact,
+    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, Contact,
 )
 
 from barber.models import Barber, Service, Client, Booking
