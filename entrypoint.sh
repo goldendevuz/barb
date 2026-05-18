@@ -3,9 +3,6 @@ set -e
 
 SERVICE=${1:-web}
 
-# DB fayli shared volumeda saqlanishi uchun yo'l
-export DATABASE_PATH=/app/db/db.sqlite3
-
 echo "🚀 Starting service: $SERVICE"
 
 if [ "$SERVICE" = "web" ]; then

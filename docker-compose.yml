@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     volumes:
-      - sqlite_data:/app/db
+      - ./:/app
     restart: unless-stopped
     depends_on: []
 
@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     volumes:
-      - sqlite_data:/app/db
+      - ./:/app
     restart: unless-stopped
     depends_on:
       - web
@@ -36,7 +36,3 @@ services:
     restart: unless-stopped
     depends_on:
       - web
-
-# ── Shared SQLite volume ───────────────────────────────────────────────────────
-volumes:
-  sqlite_data:
