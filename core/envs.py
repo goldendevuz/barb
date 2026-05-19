@@ -19,7 +19,7 @@ else:
 # CORE SECURITY SETTINGS
 # =========================
 
-SECRET_KEY = config("SECRET_KEY")
+SECRET_KEY = config("SECRET_KEY", default="insecure-default-secret-key-change-in-production")
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 
@@ -65,7 +65,7 @@ CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
 # TOKENS / EXTERNAL SERVICES
 # =========================
 
-BOT_TOKEN = config("BOT_TOKEN")
+BOT_TOKEN = config("BOT_TOKEN", default="")
 BOT_USERNAME = config("BOT_USERNAME", default="")
 
 API_BASE = config("API_BASE", default="http://backend:8001")
