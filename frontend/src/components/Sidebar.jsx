@@ -34,7 +34,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <Sider width={250} theme="light" className="min-h-screen shadow-md">
+    <Sider width={250} theme="light" className="h-screen shadow-md">
       <div className="p-5 flex items-center justify-center border-b border-gray-100">
         <h1 className="text-2xl font-bold text-indigo-600 tracking-wide m-0">🪒 BarbCRM</h1>
       </div>

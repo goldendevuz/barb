@@ -22,9 +22,9 @@ const PrivateRoute = ({ children }) => {
 
 const AppLayout = ({ children }) => {
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-8 overflow-y-auto overflow-x-hidden">
         {children}
       </div>
     </div>
