@@ -14,6 +14,7 @@ import Bookings from './pages/Bookings';
 import Barbers from './pages/Barbers';
 import Services from './pages/Services';
 import Clients from './pages/Clients';
+import NotFound from './pages/NotFound';
 
 // Private Route Wrapper
 const PrivateRoute = ({ children }) => {
@@ -101,7 +102,11 @@ const App = () => {
             </PrivateRoute>
           } />
           
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={
+            <PrivateRoute>
+              <AppLayout><NotFound /></AppLayout>
+            </PrivateRoute>
+          } />
         </Routes>
       </BrowserRouter>
     </ConfigProvider>

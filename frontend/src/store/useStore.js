@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export const useAuthStore = create(
   persist(
     (set) => ({
-      isAuthenticated: false,
+      isAuthenticated: !!localStorage.getItem('access_token'),
       login: (access, refresh) => {
         localStorage.setItem('access_token', access);
         localStorage.setItem('refresh_token', refresh);

@@ -6,9 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /build
 
-# Install build dependencies
+# Install compilation dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    libpq-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
@@ -29,17 +31,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install make (user requested for Makefile commands inside container)
+# Install postgres client libraries and make
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
     make \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy virtual environment from builder
+# Copy virtual environment from builder stage
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy project files
+# Copy backend files
 COPY . .
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+
+# Set execution rights on entrypoint
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]

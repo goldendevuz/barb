@@ -1,118 +1,180 @@
-"""
-Django settings for Barbershop Bot project.
-"""
 import os
 from datetime import timedelta
-from decouple import config
 from pathlib import Path
-from core.envs import *
+from decouple import config
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = SECRET_KEY
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-production-value")
 
-DEBUG = DEBUG
+DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = ALLOWED_HOSTS
-INTERNAL_IPS = ALLOWED_HOSTS
-CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS
-CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=lambda v: [s.strip() for s in v.split(",")])
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-USE_X_FORWARDED_HOST = True
-SECURE_SSL_REDIRECT = False
-
+# Application definition
 INSTALLED_APPS = [
-    'django_daisy',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.humanize',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "daphne",  # ASGI server (must be first)
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     
     # Third party
-    'corsheaders',
-    'rest_framework',
-    'rest_framework_simplejwt',
+    "corsheaders",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "channels",
+    "django_celery_beat",
     
-    # Local
-    'barber',
+    # Local Apps
+    "apps.customers",
+    "apps.appointments",
+    "apps.staff",
+    "apps.services",
+    "apps.payments",
+    "apps.events",
+    "apps.automation",
+    "apps.notifications",
+    "apps.analytics",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
-# Docker volumeda /app/db/db.sqlite3 ishlatiladi, localda BASE_DIR/db.sqlite3
-_db_path = os.environ.get('DATABASE_PATH', str(BASE_DIR / 'db.sqlite3'))
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': _db_path,
+
+# Database selection
+# As requested: Keep SQLite as default, but use Postgres in production (DEBUG=False)
+USE_POSTGRES = not DEBUG
+
+if USE_POSTGRES:
+    DB_NAME = config("DB_NAME", default="barber")
+    DB_USER = config("DB_USER", default="barber")
+    DB_PASSWORD = config("DB_PASSWORD", default="barber")
+    DB_HOST = config("DB_HOST", default="db")
+    DB_PORT = config("DB_PORT", default="5432")
+    
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+        }
     }
-}
+else:
+    # Default SQLite
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
+
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = 'uz'
-TIME_ZONE = 'Asia/Tashkent'
+
+# Internationalization
+LANGUAGE_CODE = "uz"
+TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# CORS
 CORS_ALLOW_ALL_ORIGINS = True
 
+
+# DRF Configuration
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "core.utils.http.BotTokenAuthentication",  # Custom token authentication for Aiogram bot
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
     ),
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+
+# Redis & Celery Settings
+REDIS_URL = config("REDIS_URL", default="redis://redis:6379/1")
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
+
+# Channel Layers (WebSockets)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "config": {
+            "hosts": [config("REDIS_URL", default="redis://redis:6379/1")],
+        },
+    },
+}
+
+
+# Integrations
+TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
+SMS_URL = config("SMS_URL", default="")
+SMS_TOKEN = config("SMS_TOKEN", default="")

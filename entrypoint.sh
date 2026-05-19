@@ -3,10 +3,10 @@ set -e
 
 SERVICE=${1:-web}
 
-echo "🚀 Starting service: $SERVICE"
+echo "🚀 Starting CRM service: $SERVICE"
 
 if [ "$SERVICE" = "web" ]; then
-    echo "📦 Applying migrations..."
+    echo "📦 Applying database migrations..."
     python manage.py migrate --noinput
 
     echo "🎨 Collecting static files..."
@@ -21,18 +21,28 @@ django.setup()
 U = get_user_model()
 if not U.objects.filter(username='admin').exists():
     U.objects.create_superuser('admin', 'admin@example.com', 'admin')
-    print('  ✅ Superuser yaratildi: admin / admin')
+    print('  ✅ Superuser created: admin / admin')
 else:
-    print('  ⏭️  Superuser allaqachon mavjud')
+    print('  ⏭️  Superuser already exists')
 "
-    echo "🌐 Starting Django on 0.0.0.0:8000 ..."
-    exec python manage.py runserver 0.0.0.0:8000
+    echo "🌐 Starting Daphne ASGI Server on 0.0.0.0:8000..."
+    exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
+
+elif [ "$SERVICE" = "worker" ]; then
+    echo "⚙️ Starting Celery Worker..."
+    exec celery -A config worker -l info
+
+elif [ "$SERVICE" = "beat" ]; then
+    echo "⏰ Starting Celery Beat Scheduler..."
+    # Ensure any old celery beat pid file is cleaned up before starting
+    rm -f celerybeat.pid
+    exec celery -A config beat -l info
 
 elif [ "$SERVICE" = "bot" ]; then
-    echo "🤖 Starting Telegram bot..."
-    exec python barber/bot.py
+    echo "🤖 Starting Standalone Telegram Bot..."
+    exec python integrations/telegram/bot.py
 
 else
-    echo "❌ Noma'lum servis: $SERVICE (web yoki bot bo'lishi kerak)"
+    echo "❌ Unknown service: $SERVICE (must be web, worker, beat, or bot)"
     exit 1
 fi
