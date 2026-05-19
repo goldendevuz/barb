@@ -39,6 +39,8 @@ services:
       dockerfile: Dockerfile
     container_name: barb_web
     command: web
+    ports:
+      - "8080:8000"
     env_file:
       - .env
     environment:
