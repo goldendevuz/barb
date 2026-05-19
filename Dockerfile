@@ -1,8 +1,12 @@
 # ── Builder Stage ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim AS builder
 
+# Install Astral uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uv/bin/uv
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/uv/bin:$PATH"
 
 WORKDIR /build
 
@@ -18,8 +22,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --no-cache -r requirements.txt
+
 
 
 # ── Final Stage ───────────────────────────────────────────────────────────────
