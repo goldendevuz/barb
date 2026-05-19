@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from aiogram import Router, F
 from aiogram.filters import Command
+from decouple import config
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
@@ -20,8 +21,11 @@ logger = logging.getLogger(__name__)
 router = Router()
 client = CRMAPIClient()
 
+BOT_OWNER_IDS = [int(x.strip()) for x in config("BOT_OWNER_IDS", default="123456789").split(",") if x.strip()]
+
 # State definitions for FSM Booking Flow
 class BookingStates(StatesGroup):
+    searching = State()
     selecting_barbershop = State()
     selecting_service = State()
     selecting_staff = State()
@@ -34,10 +38,12 @@ def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📅 Yangi Band Qilish"), KeyboardButton(text="📋 Mening Bandliklarim")],
-            [KeyboardButton(text="📍 Sartaroshxona Lokatsiyasi"), KeyboardButton(text="❌ Bandlikni Bekor Qilish")]
+            [KeyboardButton(text="📍 Sartaroshxona Lokatsiyasi"), KeyboardButton(text="🔍 Qidiruv (Filiallar)")],
+            [KeyboardButton(text="❌ Bandlikni Bekor Qilish")]
         ],
         resize_keyboard=True
     )
+
 
 def get_contact_keyboard():
     return ReplyKeyboardMarkup(
@@ -118,7 +124,7 @@ async def start_booking(message: Message, state: FSMContext):
     await message.answer("📍 Iltimos, o'zingizga qulay sartaroshxona filialini tanlang:", reply_markup=markup)
 
 
-@router.callback_query(BookingStates.selecting_barbershop, F.data.startswith("branch_"))
+@router.callback_query(F.data.startswith("branch_"))
 async def process_barbershop_selection(callback: CallbackQuery, state: FSMContext):
     barbershop_id = int(callback.data.split("_")[1])
     await state.update_data(barbershop_id=barbershop_id)
@@ -143,6 +149,151 @@ async def process_barbershop_selection(callback: CallbackQuery, state: FSMContex
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
     await state.set_state(BookingStates.selecting_service)
     await callback.message.edit_text("💆‍♂️ Iltimos, xizmat turini tanlang:", reply_markup=markup)
+
+
+# ── 2.5 TEXT-BASED FUZZY SEARCH (BRANCH/BARBER/LOCATION) ──────────────────────
+
+@router.message(F.text == "🔍 Qidiruv (Filiallar)")
+async def start_search(message: Message, state: FSMContext):
+    await state.set_state(BookingStates.searching)
+    await message.answer(
+        "🔍 Qidirmoqchi bo'lgan sartaroshxona nomi, usta ismi yoki manzilni yuboring (Masalan: 'Chilonzor' yoki 'Jasur'):"
+    )
+
+@router.message(BookingStates.searching)
+async def process_search_query(message: Message, state: FSMContext):
+    query = message.text.strip().lower()
+    if not query:
+        await message.answer("Iltimos, haqiqiy qidiruv so'zini kiriting.")
+        return
+        
+    await message.answer("🔄 Qidirilmoqda...")
+    
+    barbershops = await client.get_barbershops()
+    staff_list = await client.get_staff()
+    
+    matched_branches = []
+    
+    # Check branches
+    for b in barbershops:
+        if query in b["name"].lower() or query in b["address"].lower():
+            matched_branches.append(b)
+            
+    # Check staff
+    for s in staff_list:
+        full_name = f"{s['first_name']} {s['last_name']}".lower()
+        if query in full_name:
+            branch_id = s.get("barbershop")
+            if branch_id:
+                branch = next((b for b in barbershops if b["id"] == branch_id), None)
+                if branch and branch not in matched_branches:
+                    matched_branches.append(branch)
+
+    if not matched_branches:
+        await message.answer(
+            "😔 Kechirasiz, mos keluvchi sartaroshxona yoki usta topilmadi. Qayta urinib ko'ring:",
+            reply_markup=get_main_keyboard()
+        )
+        await state.clear()
+        return
+
+    await message.answer(f"🎉 {len(matched_branches)} ta filial topildi:")
+    for b in matched_branches:
+        buttons = [
+            [InlineKeyboardButton(text="💆‍♂️ Xizmatlar va Band Qilish", callback_data=f"branch_{b['id']}")]
+        ]
+        if b.get("latitude") and b.get("longitude"):
+            buttons.append([InlineKeyboardButton(text="📍 Xaritada ko'rish", callback_data=f"mappin_{b['id']}")])
+            
+        markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+        
+        info_text = (
+            f"🏢 <b>{b['name']}</b>\n"
+            f"📍 Manzil: {b['address']}\n"
+        )
+        await message.answer(info_text, reply_markup=markup, parse_mode="HTML")
+        
+    await state.clear()
+
+
+@router.callback_query(F.data.startswith("mappin_"))
+async def process_mappin_callback(callback: CallbackQuery):
+    barbershop_id = int(callback.data.split("_")[1])
+    barbershops = await client.get_barbershops()
+    branch = next((b for b in barbershops if b["id"] == barbershop_id), None)
+    if branch and branch.get("latitude") and branch.get("longitude"):
+        await callback.message.reply_location(
+            latitude=float(branch["latitude"]),
+            longitude=float(branch["longitude"])
+        )
+        await callback.answer()
+    else:
+        await callback.answer("😔 Ushbu filial lokatsiyasi kiritilmagan.", show_alert=True)
+
+
+# ── 2.6 BOT OWNER ADMIN COMMANDS (STATS & ANNOUNCEMENTS) ──────────────────────
+
+@router.message(Command("bot_stats"))
+async def cmd_bot_stats(message: Message):
+    if message.from_user.id not in BOT_OWNER_IDS:
+        await message.answer("❌ Kechirasiz, siz bot egasi emassiz.")
+        return
+        
+    await message.answer("🔄 Tizim statistikasi yuklanmoqda...")
+    stats = await client.get_global_stats()
+    if not stats:
+        await message.answer("❌ Statistikani yuklab bo'lmadi.")
+        return
+        
+    text = (
+        "📊 <b>BARBER CRM GLOBAL STATISTIKASI</b>\n\n"
+        f"🏢 Filiallar soni: <b>{stats['total_branches']} ta</b>\n"
+        f"💇‍♂️ Sartaroshlar soni: <b>{stats['total_barbers']} ta</b>\n"
+        f"👥 Ro'yxatdan o'tgan mijozlar: <b>{stats['total_clients']} ta</b>\n"
+        f"📅 Jami bandliklar soni: <b>{stats['total_bookings']} ta</b>\n"
+        f"💰 Jami tushgan to'lov: <b>{stats['total_revenue']:,} UZS</b>\n"
+    )
+    await message.answer(text, parse_mode="HTML")
+
+
+@router.message(Command("broadcast"))
+async def cmd_broadcast(message: Message):
+    if message.from_user.id not in BOT_OWNER_IDS:
+        await message.answer("❌ Kechirasiz, siz bot egasi emassiz.")
+        return
+        
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("⚠️ Iltimos xabarni yozing. Masalan:\n<code>/broadcast Yangi yil chegirmalari boshlandi!</code>", parse_mode="HTML")
+        return
+        
+    broadcast_text = parts[1]
+    await message.answer("📢 Xabarni barcha mijozlarga yuborish boshlandi...")
+    
+    clients = await client.get_clients()
+    success_count = 0
+    fail_count = 0
+    
+    for c in clients:
+        tel_id = c.get("telegram_id")
+        if tel_id:
+            try:
+                await message.bot.send_message(
+                    chat_id=int(tel_id),
+                    text=f"📢 <b>ADMIN XABARI:</b>\n\n{broadcast_text}",
+                    parse_mode="HTML"
+                )
+                success_count += 1
+            except Exception as e:
+                fail_count += 1
+                
+    await message.answer(
+        f"✅ <b>E'lon yuborish yakunlandi!</b>\n\n"
+        f"🟢 Muvaffaqiyatli: {success_count} ta mijozga\n"
+        f"🔴 Muammoli/Bloklangan: {fail_count} ta",
+        parse_mode="HTML"
+    )
+
 
 
 @router.callback_query(BookingStates.selecting_service, F.data.startswith("service_"))

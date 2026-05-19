@@ -115,3 +115,19 @@ class CRMAPIClient:
         payload = {"new_status": new_status}
         return await self._request("POST", f"appointments/{booking_id}/transition/", payload)
 
+    async def get_clients(self) -> List[Dict[str, Any]]:
+        """
+        Retrieves list of all clients (customers).
+        """
+        res = await self._request("GET", "clients/")
+        if isinstance(res, dict) and "results" in res:
+            return res["results"]
+        return res if isinstance(res, list) else []
+
+    async def get_global_stats(self) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves global SaaS dashboard statistics (Total branches, barbers, revenue, etc.).
+        """
+        return await self._request("GET", "admin/global-stats/")
+
+
