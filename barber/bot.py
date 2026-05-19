@@ -581,12 +581,19 @@ async def my_bookings(message: Message):
         Booking.STATUS_CANCELLED: "❌",
         Booking.STATUS_DONE: "✔️",
     }
+    status_labels = {
+        Booking.STATUS_PENDING: "Kutilmoqda",
+        Booking.STATUS_CONFIRMED: "Tasdiqlangan",
+        Booking.STATUS_CANCELLED: "Bekor qilingan",
+        Booking.STATUS_DONE: "Bajarilgan",
+    }
     for b in bookings:
         icon = status_icons.get(b.status, "•")
+        lbl = status_labels.get(b.status, b.status)
         lines.append(
             f"{icon} #{b.id} | {b.date} {b.time.strftime('%H:%M')}\n"
             f"   ✂️ {b.service.name} — 💈 {b.barber.name}\n"
-            f"   💰 {b.price:,.0f} so'm\n"
+            f"   💰 {b.price:,.0f} so'm | Holati: <b>{lbl}</b>\n"
         )
 
     await message.answer("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=main_menu_kb())
