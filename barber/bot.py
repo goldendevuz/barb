@@ -98,7 +98,6 @@ def get_client_bookings(tg_id: int):
     return list(
         client.bookings
         .select_related('barber', 'service')
-        .exclude(status=Booking.STATUS_CANCELLED)
         .order_by('-date', '-time')[:10]
     )
 
