@@ -101,7 +101,7 @@ const Clients = () => {
         </Button>
       </div>
       
-      <Table columns={columns} dataSource={data} rowKey="id" loading={loading} />
+      <Table columns={columns} dataSource={data} rowKey="id" loading={loading} scroll={{ x: true }} />
 
       <Modal
         title={editingId ? "Mijozni tahrirlash" : "Yangi mijoz"}

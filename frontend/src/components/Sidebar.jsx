@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/useStore';
 
 const { Sider } = Layout;
 
-const Sidebar = () => {
+const Sidebar = ({ isMobile, closeDrawer }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuthStore();
@@ -21,6 +21,7 @@ const Sidebar = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+    if (isMobile && closeDrawer) closeDrawer();
   };
 
   const menuItems = [
@@ -33,20 +34,37 @@ const Sidebar = () => {
     { key: 'logout', icon: <LogoutOutlined />, label: 'Chiqish', onClick: handleLogout, danger: true },
   ];
 
-  return (
-    <Sider width={250} theme="light" className="h-screen shadow-md">
-      <div className="p-5 flex items-center justify-center border-b border-gray-100">
-        <h1 className="text-2xl font-bold text-indigo-600 tracking-wide m-0">🪒 BarbCRM</h1>
-      </div>
+  const handleMenuClick = ({ key }) => {
+    if (key !== 'logout') {
+      navigate(key);
+      if (isMobile && closeDrawer) closeDrawer();
+    }
+  };
+
+  const menuContent = (
+    <>
+      {!isMobile && (
+        <div className="p-5 flex items-center justify-center border-b border-gray-100">
+          <h1 className="text-2xl font-bold text-indigo-600 tracking-wide m-0">🪒 BarbCRM</h1>
+        </div>
+      )}
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
         items={menuItems}
-        onClick={({ key }) => {
-          if (key !== 'logout') navigate(key);
-        }}
+        onClick={handleMenuClick}
         className="mt-4 border-r-0"
       />
+    </>
+  );
+
+  if (isMobile) {
+    return <div className="h-full bg-white">{menuContent}</div>;
+  }
+
+  return (
+    <Sider width={250} theme="light" className="h-screen shadow-md">
+      {menuContent}
     </Sider>
   );
 };
