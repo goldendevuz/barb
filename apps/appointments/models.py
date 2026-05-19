@@ -1,6 +1,6 @@
 from django.db import models
 from apps.customers.models import Customer
-from apps.staff.models import Staff
+from apps.staff.models import Staff, Barbershop
 from apps.services.models import Service
 
 class Appointment(models.Model):
@@ -14,6 +14,7 @@ class Appointment(models.Model):
         ("no_show", "No Show"),
     ]
     
+    barbershop = models.ForeignKey(Barbershop, on_delete=models.CASCADE, null=True, blank=True, related_name="appointments")
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="appointments")
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name="appointments")
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name="appointments")
@@ -32,3 +33,4 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"Appointment with {self.customer.first_name} by {self.staff.first_name} at {self.start_time.strftime('%Y-%m-%d %H:%M')}"
+

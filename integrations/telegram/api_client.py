@@ -65,6 +65,15 @@ class CRMAPIClient:
         res = await self._request("GET", f"appointments/by-telegram/{telegram_id}/")
         return res if res is not None else []
 
+    async def get_barbershops(self) -> List[Dict[str, Any]]:
+        """
+        Retrieves list of all barbershops (branches).
+        """
+        res = await self._request("GET", "barbershops/")
+        if isinstance(res, dict) and "results" in res:
+            return res["results"]
+        return res if isinstance(res, list) else []
+
     async def get_services(self) -> List[Dict[str, Any]]:
         """
         Retrieves list of active services.
@@ -84,7 +93,7 @@ class CRMAPIClient:
         return res if isinstance(res, list) else []
 
     async def create_booking(
-        self, customer_id: int, staff_id: int, service_id: int, start_time: str
+        self, customer_id: int, staff_id: int, service_id: int, start_time: str, barbershop_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Creates a new appointment.
@@ -95,6 +104,8 @@ class CRMAPIClient:
             "service": service_id,
             "start_time": start_time
         }
+        if barbershop_id:
+            payload["barbershop"] = barbershop_id
         return await self._request("POST", "appointments/", payload)
 
     async def transition_booking(self, booking_id: int, new_status: str) -> Optional[Dict[str, Any]]:
@@ -103,3 +114,4 @@ class CRMAPIClient:
         """
         payload = {"new_status": new_status}
         return await self._request("POST", f"appointments/{booking_id}/transition/", payload)
+

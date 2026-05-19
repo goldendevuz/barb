@@ -8,9 +8,28 @@ from .serializers import AppointmentSerializer
 from .services import create_appointment, transition_appointment
 
 class AppointmentViewSet(viewsets.ModelViewSet):
-    queryset = Appointment.objects.all().order_by("-start_time")
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticatedOrBot]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or user.is_anonymous:
+            return Appointment.objects.all().order_by("-start_time")
+            
+        try:
+            staff_profile = user.staff_profile
+            if staff_profile.role == "barber":
+                return Appointment.objects.filter(staff=staff_profile).order_by("-start_time")
+            elif staff_profile.role == "admin":
+                return Appointment.objects.filter(staff__barbershop=staff_profile.barbershop).order_by("-start_time")
+        except Exception:
+            pass
+            
+        if user.is_superuser:
+            return Appointment.objects.all().order_by("-start_time")
+            
+        return Appointment.objects.none()
+
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

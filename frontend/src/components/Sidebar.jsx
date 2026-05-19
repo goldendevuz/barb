@@ -6,6 +6,7 @@ import {
   ScissorOutlined, 
   ShopOutlined, 
   UserOutlined,
+  DollarOutlined,
   LogoutOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -30,6 +31,7 @@ const Sidebar = ({ isMobile, closeDrawer }) => {
     { key: '/barbers', icon: <ScissorOutlined />, label: 'Sartaroshlar' },
     { key: '/services', icon: <ShopOutlined />, label: 'Xizmatlar' },
     { key: '/clients', icon: <UserOutlined />, label: 'Mijozlar' },
+    { key: '/pricing', icon: <DollarOutlined />, label: 'Tariflar (SaaS)' },
     { type: 'divider' },
     { key: 'logout', icon: <LogoutOutlined />, label: 'Chiqish', onClick: handleLogout, danger: true },
   ];

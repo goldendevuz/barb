@@ -13,6 +13,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = [
             "id",
+            "barbershop",
             "customer",
             "customer_detail",
             "staff",
@@ -26,3 +27,4 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "end_time", "created_at", "updated_at"]
+

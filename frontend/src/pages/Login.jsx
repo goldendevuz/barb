@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Checkbox } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useStore';
 import axios from 'axios';
 import { BASE_URL } from '../services/api';
@@ -71,6 +71,13 @@ const Login = () => {
             </Button>
           </Form.Item>
         </Form>
+
+        <div className="text-center mt-6">
+          <span className="text-gray-600">Sartaroshmisiz? </span>
+          <Link to="/signup" className="text-indigo-600 font-semibold hover:text-indigo-500">
+            Ro'yxatdan o'tish
+          </Link>
+        </div>
       </Card>
     </div>
   );

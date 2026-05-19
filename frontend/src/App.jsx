@@ -9,6 +9,8 @@ import Sidebar from './components/Sidebar';
 
 // Pages
 import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Pricing from './pages/Pricing';
 import Dashboard from './pages/Dashboard';
 import Bookings from './pages/Bookings';
 import Barbers from './pages/Barbers';
@@ -75,6 +77,7 @@ const App = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           
           <Route path="/" element={
             <PrivateRoute>
@@ -101,6 +104,11 @@ const App = () => {
               <AppLayout><Clients /></AppLayout>
             </PrivateRoute>
           } />
+          <Route path="/pricing" element={
+            <PrivateRoute>
+              <AppLayout><Pricing /></AppLayout>
+            </PrivateRoute>
+          } />
           
           <Route path="*" element={
             <PrivateRoute>
@@ -112,5 +120,6 @@ const App = () => {
     </ConfigProvider>
   );
 };
+
 
 export default App;

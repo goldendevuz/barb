@@ -1,19 +1,36 @@
 import os
 import django
 import sys
+from datetime import date, timedelta
 
 # Set up Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from apps.staff.models import Staff
+from django.contrib.auth.models import User
+from apps.staff.models import Staff, Barbershop, BarberSchedule
 from apps.services.models import Service
 from apps.automation.models import AutomationRule
 
+BARBERSHOPS = [
+    {
+        "name": "Chilonzor Filiali",
+        "address": "Toshkent sh., Lutfiy ko'chasi, 24-uy",
+        "latitude": 41.278385,
+        "longitude": 69.202356
+    },
+    {
+        "name": "Yunusobod Filiali",
+        "address": "Toshkent sh., Amir Temur ko'chasi, 82-uy",
+        "latitude": 41.364256,
+        "longitude": 69.287842
+    }
+]
+
 STAFF = [
-    {"first_name": "Jasur", "last_name": "Karimov", "phone": "+998901234567", "role": "barber"},
-    {"first_name": "Bobur", "last_name": "Yusupov", "phone": "+998912345678", "role": "barber"},
-    {"first_name": "Sherzod", "last_name": "Aliyev", "phone": "+998933456789", "role": "admin"},
+    {"first_name": "Jasur", "last_name": "Karimov", "phone": "+998901234567", "role": "barber", "username": "jasur_barber"},
+    {"first_name": "Bobur", "last_name": "Yusupov", "phone": "+998912345678", "role": "barber", "username": "bobur_barber"},
+    {"first_name": "Sherzod", "last_name": "Aliyev", "phone": "+998933456789", "role": "admin", "username": "sherzod_admin"},
 ]
 
 SERVICES = [
@@ -31,7 +48,7 @@ AUTOMATION_RULES = [
         "actions": [
             {
                 "type": "send_telegram_message",
-                "message": "👋 Assalomu alaykum {customer_name}! Sizning buyurtmangiz muvaffaqiyatli qabul qilindi.\n\n💇‍♂️ Usta: {staff_name}\n💆‍♂️ Xizmat: {service_name}\n⏰ Vaqt: {start_time}\n\nSizni kutib qolamiz!"
+                "message": "👋 Assalomu alaykum {customer_name}! Sizning buyurtmangiz muvaffaqiyatli qabul qilindi.\n\n🏢 Filial: {barbershop_name}\n💇‍♂️ Usta: {staff_name}\n💆‍♂️ Xizmat: {service_name}\n⏰ Vaqt: {start_time}\n\nSizni kutib qolamiz!"
             }
         ]
     },
@@ -64,31 +81,83 @@ AUTOMATION_RULES = [
 ]
 
 def seed():
-    print("🚀 Seeding Barber CRM SaaS...")
+    print("🚀 Seeding Barber CRM Multi-Tenant SaaS...")
     
-    # 1. Seed Staff
+    # 1. Seed Barbershops
+    branches = []
+    for bs in BARBERSHOPS:
+        obj, created = Barbershop.objects.get_or_create(
+            name=bs["name"],
+            defaults={"address": bs["address"], "latitude": bs["latitude"], "longitude": bs["longitude"]}
+        )
+        branches.append(obj)
+        print(f"  🏢 Barbershop branch: {obj.name} @ {obj.address}")
+
+    # 2. Seed Users & Staff
     staff_count = 0
-    for s in STAFF:
+    today = date.today()
+    for idx, s in enumerate(STAFF):
+        # Create standard auth user for barber
+        user, u_created = User.objects.get_or_create(
+            username=s["username"],
+            defaults={
+                "first_name": s["first_name"],
+                "last_name": s["last_name"],
+                "email": f"{s['username']}@barbercrm.uz"
+            }
+        )
+        if u_created:
+            user.set_password("barberpass123")
+            user.save()
+            print(f"  👤 Auth user created: {user.username}")
+
+        # Choose a branch
+        branch = branches[idx % len(branches)]
+
         obj, created = Staff.objects.get_or_create(
             phone=s["phone"],
-            defaults={"first_name": s["first_name"], "last_name": s["last_name"], "role": s["role"]}
+            defaults={
+                "user": user,
+                "barbershop": branch,
+                "first_name": s["first_name"],
+                "last_name": s["last_name"],
+                "role": s["role"]
+            }
         )
         if created:
             staff_count += 1
-            print(f"  💇‍♂️ Staff created: {obj.first_name} {obj.last_name}")
-            
-    # 2. Seed Services
+            print(f"  💇‍♂️ Staff created: {obj.first_name} {obj.last_name} in {branch.name}")
+
+            # 3. Seed work schedule for this barber (next 7 days)
+            if s["role"] == "barber":
+                for day_offset in range(7):
+                    sched_date = today + timedelta(days=day_offset)
+                    BarberSchedule.objects.get_or_create(
+                        staff=obj,
+                        date=sched_date,
+                        defaults={
+                            "is_working": True,
+                            "start_time": "09:00:00",
+                            "end_time": "18:00:00"
+                        }
+                    )
+                print(f"    📅 Schedule filled for {obj.first_name} (next 7 days)")
+
+    # 4. Seed Services
     service_count = 0
     for sv in SERVICES:
-        obj, created = Service.objects.get_or_create(
-            name=sv["name"],
-            defaults={"price": sv["price"], "duration_minutes": sv["duration_minutes"]}
-        )
-        if created:
-            service_count += 1
-            print(f"  💆‍♂️ Service created: {obj.name} ({obj.price} UZS)")
+        # Register service in both branches
+        for branch in branches:
+            obj, created = Service.objects.get_or_create(
+                name=f"{sv['name']} ({branch.name.split()[0]})",
+                barbershop=branch,
+                defaults={"price": sv["price"], "duration_minutes": sv["duration_minutes"]}
+            )
+            if created:
+                service_count += 1
+                print(f"  💆‍♂️ Service created: {obj.name} ({obj.price} UZS)")
             
-    # 3. Seed Automation Rules
+    # 5. Seed Automation Rules
     rule_count = 0
     for r in AUTOMATION_RULES:
         obj, created = AutomationRule.objects.get_or_create(
@@ -100,7 +169,7 @@ def seed():
             print(f"  ⚙️ Automation Rule created: {obj.name}")
             
     print(f"\n🎉 Seeding finished successfully!")
-    print(f"  Added {staff_count} staff, {service_count} services, and {rule_count} automation rules.")
+    print(f"  Added {len(branches)} branches, {staff_count} staff with schedules, {service_count} services, and {rule_count} automation rules.")
 
 if __name__ == "__main__":
     seed()

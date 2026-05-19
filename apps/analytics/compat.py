@@ -49,9 +49,24 @@ class BarberCompatSerializer(serializers.ModelSerializer):
 
 
 class BarberCompatViewSet(viewsets.ModelViewSet):
-    queryset = Staff.objects.filter(role="barber").order_by("first_name")
     serializer_class = BarberCompatSerializer
     permission_classes = [IsAuthenticatedOrBot]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or user.is_anonymous:
+            return Staff.objects.filter(role="barber").order_by("first_name")
+        try:
+            staff_profile = user.staff_profile
+            if staff_profile.role == "barber":
+                return Staff.objects.filter(id=staff_profile.id)
+            elif staff_profile.role == "admin":
+                return Staff.objects.filter(role="barber", barbershop=staff_profile.barbershop).order_by("first_name")
+        except Exception:
+            pass
+        if user.is_superuser:
+            return Staff.objects.filter(role="barber").order_by("first_name")
+        return Staff.objects.none()
 
 
 # ── 2. CLIENT (CUSTOMER) COMPATIBILITY ────────────────────────────────────────
@@ -133,7 +148,6 @@ class BookingCompatSerializer(serializers.ModelSerializer):
         return float(obj.service.price)
 
     def get_status(self, obj):
-        # Map DB states to frontend expected status values
         mapping = {
             "created": "pending",
             "confirmed": "confirmed",
@@ -147,23 +161,36 @@ class BookingCompatSerializer(serializers.ModelSerializer):
 
 
 class BookingCompatViewSet(viewsets.ModelViewSet):
-    queryset = Appointment.objects.all().order_by("-start_time")
     serializer_class = BookingCompatSerializer
     permission_classes = [IsAuthenticatedOrBot]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or user.is_anonymous:
+            return Appointment.objects.all().order_by("-start_time")
+        try:
+            staff_profile = user.staff_profile
+            if staff_profile.role == "barber":
+                return Appointment.objects.filter(staff=staff_profile).order_by("-start_time")
+            elif staff_profile.role == "admin":
+                return Appointment.objects.filter(staff__barbershop=staff_profile.barbershop).order_by("-start_time")
+        except Exception:
+            pass
+        if user.is_superuser:
+            return Appointment.objects.all().order_by("-start_time")
+        return Appointment.objects.none()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        # 1. Parse date and time
         date_str = request.data.get("date")
         time_str = request.data.get("time")
         if not date_str or not time_str:
             return Response({"error": "date and time are required"}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            # support formats like '10:00', '10:00:00'
             if len(time_str.split(":")) == 2:
                 time_str += ":00"
             start_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
@@ -172,7 +199,6 @@ class BookingCompatViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": f"Invalid date/time format: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Map input status
         status_input = request.data.get("status", "pending")
         status_mapping = {
             "pending": "created",
@@ -186,7 +212,6 @@ class BookingCompatViewSet(viewsets.ModelViewSet):
         actor_type = "staff"
 
         try:
-            # 3. Create using Appointments service to trigger event and notifications!
             appt = create_appointment(
                 customer_id=data["customer"].id,
                 staff_id=data["staff"].id,
@@ -196,7 +221,6 @@ class BookingCompatViewSet(viewsets.ModelViewSet):
                 actor_id=actor_id
             )
             
-            # If standard status is different, run state machine transition
             if status_val != "created":
                 appt = transition_appointment(
                     appointment_id=appt.id,
@@ -211,13 +235,10 @@ class BookingCompatViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
-        # We can implement a clean update, or let Django REST Framework handle it
-        # For full safety and keeping FSM rules:
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         
-        # If status is changing, run the state transition service
         new_status_input = request.data.get("status")
         if new_status_input:
             status_mapping = {
@@ -249,28 +270,57 @@ class DashboardStatsView(views.APIView):
     def get(self, request, *args, **kwargs):
         from django.db.models import Sum
         
+        user = request.user
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timezone.timedelta(days=1)
         
-        # Today's booking counts
-        today_count = Appointment.objects.filter(start_time__range=(today_start, today_end)).count()
+        # Get tenant filters
+        barber_filter = None
+        barbershop_filter = None
         
-        # Today's completed payments
-        today_income = Payment.objects.filter(
-            status="completed",
-            created_at__range=(today_start, today_end)
-        ).aggregate(total=Sum("amount"))["total"] or 0.0
+        if user and not user.is_anonymous:
+            try:
+                staff_profile = user.staff_profile
+                if staff_profile.role == "barber":
+                    barber_filter = staff_profile
+                elif staff_profile.role == "admin":
+                    barbershop_filter = staff_profile.barbershop
+            except Exception:
+                pass
+
+        # 1. Today's booking count
+        q_appt = Appointment.objects.filter(start_time__range=(today_start, today_end))
+        if barber_filter:
+            q_appt = q_appt.filter(staff=barber_filter)
+        elif barbershop_filter:
+            q_appt = q_appt.filter(staff__barbershop=barbershop_filter)
+        today_count = q_appt.count()
         
-        # Monthly income
+        # 2. Today's completed payments
+        q_pay = Payment.objects.filter(status="completed", created_at__range=(today_start, today_end))
+        if barber_filter:
+            q_pay = q_pay.filter(appointment__staff=barber_filter)
+        elif barbershop_filter:
+            q_pay = q_pay.filter(appointment__staff__barbershop=barbershop_filter)
+        today_income = q_pay.aggregate(total=Sum("amount"))["total"] or 0.0
+        
+        # 3. Monthly completed payments
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        monthly_income = Payment.objects.filter(
-            status="completed",
-            created_at__gte=month_start
-        ).aggregate(total=Sum("amount"))["total"] or 0.0
+        q_pay_month = Payment.objects.filter(status="completed", created_at__gte=month_start)
+        if barber_filter:
+            q_pay_month = q_pay_month.filter(appointment__staff=barber_filter)
+        elif barbershop_filter:
+            q_pay_month = q_pay_month.filter(appointment__staff__barbershop=barbershop_filter)
+        monthly_income = q_pay_month.aggregate(total=Sum("amount"))["total"] or 0.0
         
-        # Active barbers
-        active_barbers = Staff.objects.filter(role="barber", is_active=True).count()
+        # 4. Active barbers count
+        q_barbers = Staff.objects.filter(role="barber", is_active=True)
+        if barbershop_filter:
+            q_barbers = q_barbers.filter(barbershop=barbershop_filter)
+        elif barber_filter:
+            q_barbers = q_barbers.filter(id=barber_filter.id)
+        active_barbers = q_barbers.count()
         
         return Response({
             "today_bookings_count": today_count,
@@ -278,3 +328,4 @@ class DashboardStatsView(views.APIView):
             "monthly_income": float(monthly_income),
             "active_barbers": active_barbers,
         })
+
