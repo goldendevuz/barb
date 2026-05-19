@@ -60,11 +60,49 @@ def get_contact_keyboard():
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     await state.clear()
+    
+    # Check deep link start arguments (barber account linking)
+    parts = message.text.split(maxsplit=1)
+    if len(parts) > 1:
+        arg = parts[1].strip()
+        if arg.startswith("staff_"):
+            try:
+                sub_parts = arg.split("_")
+                if len(sub_parts) == 3:
+                    staff_id = int(sub_parts[1])
+                    token = sub_parts[2]
+                    
+                    await message.answer("🔄 Sartarosh profilingiz bog'lanmoqda...")
+                    res = await client.verify_telegram_link(
+                        staff_id=staff_id,
+                        token=token,
+                        telegram_id=message.from_user.id
+                    )
+                    
+                    if res and res.get("success"):
+                        await message.answer(
+                            f"🎉 Tabriklaymiz, <b>{res.get('staff_name')}</b>!\n\n"
+                            f"Sizning Telegram profilingiz CRM tizimiga muvaffaqiyatli bog'landi.\n"
+                            f"Endi barcha yangi buyurtmalar va xabarnomalar to'g'ridan-to'g'ri shu yerga keladi! 🪒",
+                            parse_mode="HTML",
+                            reply_markup=get_main_keyboard()
+                        )
+                        return
+                    else:
+                        error_msg = res.get("error") if res else "Ulanish muvaffaqiyatsiz yakunlandi."
+                        await message.answer(f"❌ Ulanish xatosi: {error_msg}")
+                        return
+            except Exception as e:
+                logger.error(f"Error handling staff link: {e}")
+                await message.answer("❌ Noto'g'ri bog'lanish havolasi.")
+                return
+
     await message.answer(
         "👋 Assalomu alaykum! Barber CRM SaaS tizimiga xush kelibsiz.\n\n"
         "Xizmatlardan foydalanish va uchrashuvlarni band qilish uchun telefon raqamingizni yuboring:",
         reply_markup=get_contact_keyboard()
     )
+
 
 
 @router.message(F.contact)

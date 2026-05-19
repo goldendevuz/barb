@@ -217,3 +217,71 @@ class BarberScheduleViewSet(viewsets.ModelViewSet):
             
         return BarberSchedule.objects.none()
 
+
+class BarberTelegramLinkAPIView(views.APIView):
+    """
+    Endpoint for barbers to generate a secure verification link
+    to hook their Telegram accounts and receive automated booking alerts.
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]  # Let bots access
+
+    def get(self, request, *args, **kwargs):
+        try:
+            staff = request.user.staff_profile
+        except Exception:
+            return Response({"error": "Sartarosh profili topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+
+        from django.conf import settings
+        import hashlib
+
+        raw_str = f"{staff.id}_{settings.SECRET_KEY}"
+        token = hashlib.md5(raw_str.encode()).hexdigest()[:10]
+        
+        bot_username = config("TELEGRAM_BOT_USERNAME", default="sharb_bot")
+        link = f"https://t.me/{bot_username}?start=staff_{staff.id}_{token}"
+
+        return Response({
+            "is_linked": bool(staff.telegram_id),
+            "telegram_id": staff.telegram_id,
+            "link": link,
+            "start_param": f"staff_{staff.id}_{token}"
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        # Bot token validation
+        if request.META.get("HTTP_X_BOT_TOKEN") is None and not request.user.is_superuser:
+            return Response({"error": "Faqat bot bu amaliyotni bajara oladi!"}, status=status.HTTP_403_FORBIDDEN)
+            
+        staff_id = request.data.get("staff_id")
+        token = request.data.get("token")
+        telegram_id = request.data.get("telegram_id")
+        
+        if not staff_id or not token or not telegram_id:
+            return Response({"error": "Barcha parametrlar majburiy!"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from django.conf import settings
+        import hashlib
+        from apps.staff.models import Staff
+        
+        try:
+            staff = Staff.objects.get(id=staff_id)
+        except Staff.DoesNotExist:
+            return Response({"error": "Sartarosh topilmadi!"}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Verify token
+        raw_str = f"{staff.id}_{settings.SECRET_KEY}"
+        expected_token = hashlib.md5(raw_str.encode()).hexdigest()[:10]
+        
+        if token != expected_token:
+            return Response({"error": "Xavfsizlik kaliti noto'g'ri!"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        staff.telegram_id = str(telegram_id)
+        staff.save()
+        
+        return Response({
+            "success": True,
+            "staff_name": f"{staff.first_name} {staff.last_name}".strip()
+        }, status=status.HTTP_200_OK)
+
+
+

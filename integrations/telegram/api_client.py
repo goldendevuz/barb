@@ -130,4 +130,16 @@ class CRMAPIClient:
         """
         return await self._request("GET", "admin/global-stats/")
 
+    async def verify_telegram_link(self, staff_id: int, token: str, telegram_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Submits verification parameters to link a barber's staff profile to their Telegram ID.
+        """
+        payload = {
+            "staff_id": staff_id,
+            "token": token,
+            "telegram_id": str(telegram_id)
+        }
+        return await self._request("POST", "staff/telegram-link/", payload)
+
+
 

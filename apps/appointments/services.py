@@ -11,6 +11,52 @@ from .models import Appointment
 
 logger = logging.getLogger(__name__)
 
+def notify_barber_telegram(appointment, message_type: str):
+    """
+    Queues a notification log and triggers the Celery worker to alert the barber.
+    """
+    staff = appointment.staff
+    if not staff.telegram_id:
+        return
+        
+    from apps.notifications.tasks import send_notification_async_task
+    from apps.notifications.models import NotificationLog
+    
+    cust_name = f"{appointment.customer.first_name} {appointment.customer.last_name}".strip()
+    formatted_time = appointment.start_time.strftime("%d-%m-%Y %H:%M")
+    
+    if message_type == "created":
+        msg = (
+            f"🔔 <b>YANGI BUYURTMA!</b>\n\n"
+            f"👤 Mijoz: <b>{cust_name}</b>\n"
+            f"💆 Xizmat: <b>{appointment.service.name}</b>\n"
+            f"⏰ Vaqt: <b>{formatted_time}</b>\n\n"
+            f"Batafsil ma'lumot olish uchun CRM paneliga kiring!"
+        )
+    elif message_type == "cancelled":
+        msg = (
+            f"❌ <b>BUYURTMA BEKOR QILINDI!</b>\n\n"
+            f"👤 Mijoz: <b>{cust_name}</b>\n"
+            f"⏰ Vaqt: <b>{formatted_time}</b>\n\n"
+            f"Ushbu soatdagi bandlik bekor qilindi."
+        )
+    else:
+        msg = (
+            f"🔄 <b>BUYURTMA STATUSI O'ZGARDI!</b>\n\n"
+            f"👤 Mijoz: <b>{cust_name}</b>\n"
+            f"⏰ Vaqt: <b>{formatted_time}</b>\n"
+            f"📌 Yangi status: <b>{message_type.upper()}</b>"
+        )
+        
+    log = NotificationLog.objects.create(
+        recipient=str(staff.telegram_id),
+        message=msg,
+        channel="telegram",
+        status="pending"
+    )
+    send_notification_async_task.delay(log.id)
+
+
 # State Transitions Map: Defines valid next states from a current state
 VALID_TRANSITIONS = {
     "created": ["confirmed", "cancelled"],
@@ -72,7 +118,13 @@ def create_appointment(
         actor_id=actor_id
     )
     
+    try:
+        notify_barber_telegram(appointment, "created")
+    except Exception as e:
+        logger.error(f"Failed to send telegram notification to barber: {e}")
+
     return appointment
+
 
 
 def transition_appointment(
@@ -141,4 +193,10 @@ def transition_appointment(
             actor_id=actor_id
         )
         
+    try:
+        notify_barber_telegram(appointment, new_status)
+    except Exception as e:
+        logger.error(f"Failed to send telegram notification to barber: {e}")
+
     return appointment
+
