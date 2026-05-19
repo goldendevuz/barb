@@ -43,9 +43,9 @@ CORS_ALLOWED_ORIGINS = config(
 
 DB_HOST = config("DB_HOST", default="db")
 DB_PORT = config("DB_PORT", default=5432, cast=int)
-DB_USER = config("DB_USER")
-DB_PASSWORD = config("DB_PASSWORD")
-DB_NAME = config("DB_NAME")
+DB_USER = config("DB_USER", default="barber")
+DB_PASSWORD = config("DB_PASSWORD", default="barber")
+DB_NAME = config("DB_NAME", default="barber")
 
 DB_URL = config(
     "DB_URL",
