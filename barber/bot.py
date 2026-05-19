@@ -41,6 +41,7 @@ class BookingState(StatesGroup):
     choosing_barber = State()
     choosing_date = State()
     choosing_time = State()
+    entering_custom_datetime = State()
     confirming = State()
 
 
@@ -186,30 +187,59 @@ def barbers_kb(barbers: list) -> InlineKeyboardMarkup:
 
 def dates_kb() -> InlineKeyboardMarkup:
     """Keyingi 7 kunni ko'rsatish."""
-    today = date.today()
+    from django.utils import timezone
+    now = timezone.localtime(timezone.now())
+    today = now.date()
+    
+    # Oxirgi slot 18:30 da boshlanadi. Agar 18:30 dan o'tgan bo'lsa, bugun uchun slot qolmagan.
+    start_offset = 0
+    if now.hour > 18 or (now.hour == 18 and now.minute >= 30):
+        start_offset = 1
+        
     days_uz = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
     months_uz = [
         '', 'Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn',
         'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'
     ]
     buttons = []
-    for i in range(7):
+    for i in range(start_offset, start_offset + 7):
         d = today + timedelta(days=i)
-        label = f"{'Bugun' if i == 0 else 'Ertaga' if i == 1 else days_uz[d.weekday()]} {d.day} {months_uz[d.month]}"
+        
+        if d == today:
+            day_label = "Bugun"
+        elif d == today + timedelta(days=1):
+            day_label = "Ertaga"
+        else:
+            day_label = days_uz[d.weekday()]
+            
+        label = f"{day_label} {d.day} {months_uz[d.month]}"
         buttons.append([InlineKeyboardButton(
             text=label,
             callback_data=f"date:{d.isoformat()}"
         )])
+        
+    buttons.append([InlineKeyboardButton(text="✍️ Boshqa sana va vaqt", callback_data="date:custom")])
     buttons.append([InlineKeyboardButton(text="🔙 Orqaga", callback_data="back:barber")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def times_kb(chosen_date: str) -> InlineKeyboardMarkup:
     """09:00 dan 18:00 gacha har 30 daqiqada."""
+    from django.utils import timezone
+    now = timezone.localtime(timezone.now())
+    today_str = now.date().isoformat()
+    
     slots = []
     for h in range(9, 19):
         for m in (0, 30):
-            slots.append(f"{h:02d}:{m:02d}")
+            time_str = f"{h:02d}:{m:02d}"
+            if chosen_date == today_str:
+                # Agar bugun bo'lsa, faqat hozirgi vaqtdan keyingi slotlarni chiqaramiz
+                if h > now.hour or (h == now.hour and m > now.minute):
+                    slots.append(time_str)
+            else:
+                slots.append(time_str)
+                
     rows = []
     for i in range(0, len(slots), 4):
         row = [
@@ -356,6 +386,20 @@ async def choose_barber(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("date:"))
 async def choose_date(callback: CallbackQuery, state: FSMContext):
     chosen_date = callback.data.split(":")[1]
+    if chosen_date == "custom":
+        await state.set_state(BookingState.entering_custom_datetime)
+        await callback.message.edit_text(
+            "✍️ <b>Iltimos, o'zingiz xohlagan sana va vaqtni quyidagi formatda yozib yuboring:</b>\n\n"
+            "<code>YYYY-MM-DD HH:MM</code>\n"
+            "Masalan: <code>2026-05-25 14:30</code>\n\n"
+            "<i>Eslatma: Faqat kelajakdagi vaqtni yozishingiz mumkin.</i>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back:date")]
+            ])
+        )
+        return
+
     await state.update_data(date=chosen_date)
     await state.set_state(BookingState.choosing_time)
     await callback.message.edit_text(
@@ -363,6 +407,69 @@ async def choose_date(callback: CallbackQuery, state: FSMContext):
         reply_markup=times_kb(chosen_date),
         parse_mode=ParseMode.HTML,
     )
+
+
+@router.message(BookingState.entering_custom_datetime)
+async def process_custom_datetime(message: Message, state: FSMContext):
+    text = message.text.strip()
+    
+    # YYYY-MM-DD HH:MM formatni tekshirish
+    try:
+        dt = datetime.strptime(text, "%Y-%m-%d %H:%M")
+    except ValueError:
+        await message.answer(
+            "⚠️ <b>Noto'g'ri format kiritildi!</b>\n\n"
+            "Iltimos, sana va vaqtni <code>YYYY-MM-DD HH:MM</code> formatida yuboring.\n"
+            "Masalan: <code>2026-05-25 14:30</code>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back:date")]
+            ])
+        )
+        return
+        
+    # Kelajakda ekanligini tekshirish
+    from django.utils import timezone
+    now = timezone.localtime(timezone.now())
+    
+    # Kiritilgan vaqtni timezone-aware qilamiz
+    try:
+        dt_aware = timezone.make_aware(dt)
+    except Exception:
+        dt_aware = dt.replace(tzinfo=now.tzinfo)
+        
+    if dt_aware <= now:
+        await message.answer(
+            "⚠️ <b>O'tgan zamonga buyurtma berib bo'lmaydi!</b>\n\n"
+            "Iltimos, faqat kelajakdagi sana va vaqtni kiriting.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Orqaga", callback_data="back:date")]
+            ])
+        )
+        return
+
+    # To'g'ri bo'lsa, ma'lumotlarni saqlaymiz va tasdiqlash sahifasiga o'tamiz
+    chosen_date = dt.date().isoformat()
+    chosen_time = dt.time().strftime("%H:%M")
+    
+    await state.update_data(date=chosen_date, time=chosen_time)
+    
+    data = await state.get_data()
+    service = await get_service(data['service_id'])
+    barber = await get_barber(data['barber_id'])
+    
+    summary_text = (
+        "📋 <b>Buyurtma ma'lumotlari:</b>\n\n"
+        f"✂️ Xizmat: <b>{service.name}</b>\n"
+        f"💈 Sartarosh: <b>{barber.name}</b>\n"
+        f"📅 Sana: <b>{chosen_date}</b>\n"
+        f"🕐 Vaqt: <b>{chosen_time}</b>\n"
+        f"💰 Narx: <b>{service.price:,.0f} so'm</b>\n\n"
+        "Tasdiqlaysizmi?"
+    )
+    await state.set_state(BookingState.confirming)
+    await message.answer(summary_text, reply_markup=confirm_kb(), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data.startswith("time:"))
