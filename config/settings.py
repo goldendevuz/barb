@@ -5,14 +5,22 @@ import os
 from datetime import timedelta
 from decouple import config
 from pathlib import Path
+from core.envs import *
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-this-key')
+SECRET_KEY = SECRET_KEY
 
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = DEBUG
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ALLOWED_HOSTS
+INTERNAL_IPS = ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS
+CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+SECURE_SSL_REDIRECT = False
 
 INSTALLED_APPS = [
     'django_daisy',
