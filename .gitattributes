@@ -1,0 +1,38 @@
+# Auto-detect text files and perform LF normalization on checkin
+* text=auto
+
+# Explicitly declare text file types to normalize to LF
+*.py text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Explicitly declare binary files that should not be normalized
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg text
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+
+# Exclude generated/static/media/vendor files from language analytics
+staticfiles/** linguist-vendored
+static/** linguist-vendored
+media/** linguist-vendored
+frontend/dist/** linguist-vendored
+frontend/node_modules/** linguist-vendored
