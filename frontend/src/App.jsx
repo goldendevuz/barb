@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ConfigProvider, Button, Drawer } from 'antd';
 import { MenuOutlined } from '@ant-design/icons';
 import { useAuthStore } from './store/useStore';
@@ -19,13 +19,15 @@ import Services from './pages/Services';
 import Clients from './pages/Clients';
 import NotFound from './pages/NotFound';
 
-// Private Route Wrapper
-const PrivateRoute = ({ children }) => {
+const ProtectedLayout = () => {
   const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <AppLayout />;
 };
 
-const AppLayout = ({ children }) => {
+const AppLayout = () => {
   const [mobileVisible, setMobileVisible] = useState(false);
   const [tgLink, setTgLink] = useState(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -102,7 +104,7 @@ const AppLayout = ({ children }) => {
             </a>
           </div>
         )}
-        {children}
+        <Outlet />
       </div>
     </div>
   );
@@ -123,43 +125,18 @@ const App = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          
-          <Route path="/" element={
-            <PrivateRoute>
-              <AppLayout><Dashboard /></AppLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/bookings" element={
-            <PrivateRoute>
-              <AppLayout><Bookings /></AppLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/barbers" element={
-            <PrivateRoute>
-              <AppLayout><Barbers /></AppLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/services" element={
-            <PrivateRoute>
-              <AppLayout><Services /></AppLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/clients" element={
-            <PrivateRoute>
-              <AppLayout><Clients /></AppLayout>
-            </PrivateRoute>
-          } />
-          <Route path="/pricing" element={
-            <PrivateRoute>
-              <AppLayout><Pricing /></AppLayout>
-            </PrivateRoute>
-          } />
-          
-          <Route path="*" element={
-            <PrivateRoute>
-              <AppLayout><NotFound /></AppLayout>
-            </PrivateRoute>
-          } />
+
+          <Route element={<ProtectedLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="bookings" element={<Bookings />} />
+            <Route path="barbers" element={<Barbers />} />
+            <Route path="services" element={<Services />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="pricing" element={<Pricing />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ConfigProvider>
