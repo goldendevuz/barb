@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.db import connections
 from django.db.utils import OperationalError
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from apps.analytics.compat import (
     BarberCompatViewSet,
     ClientCompatViewSet,
@@ -28,8 +29,9 @@ compat_router.register(r"bookings", BookingCompatViewSet, basename="booking-comp
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health_check, name="health-check"),
+    path("api/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/login/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
-    
     # ── Compatibility API Endpoints ──────────────────────────────────────────
     path("api/", include(compat_router.urls)),
     path("api/dashboard-stats/", DashboardStatsView.as_view(), name="dashboard-stats-compat"),
