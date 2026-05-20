@@ -2,13 +2,11 @@ import os
 import logging
 import aiohttp
 from typing import Dict, Any, List, Optional
-from decouple import config
+from core.envs import API_BASE_URL, TELEGRAM_BOT_TOKEN
 
 logger = logging.getLogger(__name__)
 
 # Load configurations
-API_BASE_URL = config("API_BASE_URL", default="http://web:8000/api/")
-TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 
 class CRMAPIClient:
     """

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import hmac
 import hashlib
 import logging
-from decouple import config
+from core.envs import TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class SocialAuthAPIView(views.APIView):
 
         if provider == "telegram":
             telegram_data = request.data.get("auth_data", {})
-            bot_token = config("TELEGRAM_BOT_TOKEN", default="")
+            bot_token = TELEGRAM_BOT_TOKEN
             
             received_hash = telegram_data.get("hash")
             if not received_hash or not bot_token:
@@ -237,7 +237,7 @@ class BarberTelegramLinkAPIView(views.APIView):
         raw_str = f"{staff.id}_{settings.SECRET_KEY}"
         token = hashlib.md5(raw_str.encode()).hexdigest()[:10]
         
-        bot_username = config("TELEGRAM_BOT_USERNAME", default="sharb_bot")
+        bot_username = TELEGRAM_BOT_USERNAME or "sharb_bot"
         link = f"https://t.me/{bot_username}?start=staff_{staff.id}_{token}"
 
         return Response({

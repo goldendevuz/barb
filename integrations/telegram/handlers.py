@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from aiogram import Router, F
 from aiogram.filters import Command
-from decouple import config
+from core.envs import BOT_OWNER_IDS
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 client = CRMAPIClient()
 
-BOT_OWNER_IDS = [int(x.strip()) for x in config("BOT_OWNER_IDS", default="123456789").split(",") if x.strip()]
+BOT_OWNER_ID_LIST = [int(x.strip()) for x in BOT_OWNER_IDS.split(",") if x.strip()] or [123456789]
 
 # State definitions for FSM Booking Flow
 class BookingStates(StatesGroup):
@@ -273,7 +273,7 @@ async def process_mappin_callback(callback: CallbackQuery):
 
 @router.message(Command("bot_stats"))
 async def cmd_bot_stats(message: Message):
-    if message.from_user.id not in BOT_OWNER_IDS:
+    if message.from_user.id not in BOT_OWNER_ID_LIST:
         await message.answer("❌ Kechirasiz, siz bot egasi emassiz.")
         return
         
@@ -296,7 +296,7 @@ async def cmd_bot_stats(message: Message):
 
 @router.message(Command("broadcast"))
 async def cmd_broadcast(message: Message):
-    if message.from_user.id not in BOT_OWNER_IDS:
+    if message.from_user.id not in BOT_OWNER_ID_LIST:
         await message.answer("❌ Kechirasiz, siz bot egasi emassiz.")
         return
         

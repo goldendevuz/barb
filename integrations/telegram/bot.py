@@ -3,7 +3,7 @@ import logging
 import sys
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from decouple import config
+from core.envs import TELEGRAM_BOT_TOKEN
 
 # Add the parent parent path so that integrations can be loaded if run standalone
 import os
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def main():
-    token = config("TELEGRAM_BOT_TOKEN", default="")
+    token = TELEGRAM_BOT_TOKEN
     if not token:
         logger.error("❌ TELEGRAM_BOT_TOKEN is not defined in environment variables.")
         sys.exit(1)

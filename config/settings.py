@@ -1,16 +1,27 @@
 import os
 from datetime import timedelta
 from pathlib import Path
-from decouple import config
+
+from core.envs import (
+    ALLOWED_HOSTS,
+    CELERY_BROKER_URL,
+    CELERY_RESULT_BACKEND,
+    DB_HOST,
+    DB_NAME,
+    DB_PASSWORD,
+    DB_PORT,
+    DB_USER,
+    DEBUG,
+    REDIS_URL,
+    SECRET_KEY,
+    SMS_TOKEN,
+    SMS_URL,
+    TELEGRAM_BOT_TOKEN,
+    TIME_ZONE,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-production-value")
-
-DEBUG = config("DEBUG", default=True, cast=bool)
-
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=lambda v: [s.strip() for s in v.split(",")])
 
 # Application definition
 INSTALLED_APPS = [
@@ -21,14 +32,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    
+
     # Third party
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
     "channels",
     "django_celery_beat",
-    
+
     # Local Apps
     "apps.customers",
     "apps.appointments",
@@ -80,12 +91,6 @@ ASGI_APPLICATION = "config.asgi.application"
 USE_POSTGRES = not DEBUG
 
 if USE_POSTGRES:
-    DB_NAME = config("DB_NAME", default="barber")
-    DB_USER = config("DB_USER", default="barber")
-    DB_PASSWORD = config("DB_PASSWORD", default="barber")
-    DB_HOST = config("DB_HOST", default="db")
-    DB_PORT = config("DB_PORT", default="5432")
-    
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -93,11 +98,10 @@ if USE_POSTGRES:
             "USER": DB_USER,
             "PASSWORD": DB_PASSWORD,
             "HOST": DB_HOST,
-            "PORT": DB_PORT,
+            "PORT": str(DB_PORT),
         }
     }
 else:
-    # Default SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -117,7 +121,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = "uz"
-TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True
 USE_TZ = True
 
@@ -137,7 +140,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # DRF Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "core.utils.http.BotTokenAuthentication",  # Custom token authentication for Aiogram bot
+        "core.utils.http.BotTokenAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
@@ -153,10 +156,6 @@ SIMPLE_JWT = {
 
 
 # Redis & Celery Settings
-REDIS_URL = config("REDIS_URL", default="redis://redis:6379/1")
-
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -168,13 +167,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "config": {
-            "hosts": [config("REDIS_URL", default="redis://redis:6379/1")],
+            "hosts": [REDIS_URL],
         },
     },
 }
-
-
-# Integrations
-TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
-SMS_URL = config("SMS_URL", default="")
-SMS_TOKEN = config("SMS_TOKEN", default="")
