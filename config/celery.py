@@ -1,7 +1,8 @@
 import os
+
+import core.envs  # noqa: F401 — .env yuklash
 from celery import Celery
 
-# Set default Django settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("barber_crm")

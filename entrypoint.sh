@@ -25,6 +25,9 @@ if not U.objects.filter(username='admin').exists():
 else:
     print('  ⏭️  Superuser already exists')
 "
+    echo "🔧 Env check..."
+    python -c "import core.envs; print(core.envs.env_debug_summary())"
+
     echo "🌐 Starting Daphne ASGI Server on 0.0.0.0:8000..."
     exec daphne -b 0.0.0.0 -p 8000 config.asgi:application
 

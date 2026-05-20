@@ -2,6 +2,14 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from pathlib import Path
+
+# .env ni Django dan oldin yuklash
+_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(_ROOT))
+os.chdir(_ROOT)
+import core.envs  # noqa: E402, F401
+
 
 def main():
     """Run administrative tasks."""

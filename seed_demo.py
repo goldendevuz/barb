@@ -1,9 +1,16 @@
 import os
-import django
 import sys
 from datetime import date, timedelta
+from pathlib import Path
 
-# Set up Django environment
+_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(_ROOT))
+os.chdir(_ROOT)
+
+import core.envs  # noqa: E402, F401
+
+import django
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 

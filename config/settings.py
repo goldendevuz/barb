@@ -1,7 +1,7 @@
-import os
 from datetime import timedelta
 from pathlib import Path
 
+import core.envs  # noqa: F401 — .env yuklash
 from core.envs import (
     ALLOWED_HOSTS,
     CELERY_BROKER_URL,
