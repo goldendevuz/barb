@@ -6,6 +6,8 @@ from core.envs import (
     ALLOWED_HOSTS,
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND,
+    CORS_ALLOWED_ORIGINS,
+    CSRF_TRUSTED_ORIGINS,
     DB_HOST,
     DB_NAME,
     DB_PASSWORD,
@@ -22,6 +24,18 @@ from core.envs import (
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Host / CSRF (.env dan)
+ALLOWED_HOSTS = ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS
+
+# Nginx / HTTPS proxy ortida
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+if not DEBUG:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
 
 # Application definition
 INSTALLED_APPS = [
@@ -55,10 +69,10 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -134,7 +148,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # CORS
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
 
 
 # DRF Configuration

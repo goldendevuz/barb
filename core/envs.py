@@ -80,6 +80,16 @@ def get_csv(key: str, default: str = "*") -> list[str]:
     return [part.strip() for part in val.split(",") if part.strip()]
 
 
+def _normalize_origin(url: str) -> str:
+    """CSRF_TRUSTED_ORIGINS uchun scheme bo'lishi shart (https://host)."""
+    url = url.strip()
+    if not url or url == "*":
+        return url
+    if url.startswith(("http://", "https://")):
+        return url.rstrip("/")
+    return f"https://{url}".rstrip("/")
+
+
 # =========================
 # CORE SECURITY
 # =========================
@@ -94,9 +104,13 @@ DEBUG = get_bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = get_csv("ALLOWED_HOSTS", default="*")
 
-CSRF_TRUSTED_ORIGINS = get_csv("CSRF_TRUSTED_ORIGINS", default="http://127.0.0.1")
+CSRF_TRUSTED_ORIGINS = [
+    _normalize_origin(o) for o in get_csv("CSRF_TRUSTED_ORIGINS", default="http://127.0.0.1")
+]
 
-CORS_ALLOWED_ORIGINS = get_csv("CORS_ALLOWED_ORIGINS", default="http://127.0.0.1")
+CORS_ALLOWED_ORIGINS = [
+    _normalize_origin(o) for o in get_csv("CORS_ALLOWED_ORIGINS", default="http://127.0.0.1")
+]
 
 # =========================
 # DATABASE
@@ -165,4 +179,6 @@ def env_debug_summary() -> dict:
         "secret_key_set": bool(SECRET_KEY) and not SECRET_KEY.startswith("insecure"),
         "telegram_token_set": bool(TELEGRAM_BOT_TOKEN),
         "db_host": DB_HOST,
+        "allowed_hosts": ALLOWED_HOSTS,
+        "csrf_trusted_origins": CSRF_TRUSTED_ORIGINS,
     }
